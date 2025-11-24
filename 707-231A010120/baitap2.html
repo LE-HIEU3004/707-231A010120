@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bài tập 02 — Đăng ký người dùng</title>
+  <style>
+    :root { --gap: 12px; --primary: #0d6efd; --error: #d7263d; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; }
+    form { max-width: 480px; margin: 0 auto; display: grid; gap: var(--gap); border: 1px solid #eee; padding: 16px; border-radius: 12px; }
+    label { font-weight: 600; }
+    input[type="text"], input[type="email"], input[type="password"] {
+      padding: 10px; border: 1px solid #ddd; border-radius: 8px; width: 100%;
+    }
+    .row { display: grid; gap: var(--gap); }
+    .actions { display: flex; gap: var(--gap); }
+    button { padding: 10px 14px; border: none; border-radius: 8px; background: var(--primary); color: #fff; cursor: pointer; }
+    .error { color: var(--error); font-size: 13px; }
+    .success { color: #1b9c85; font-weight: 600; }
+    @media (max-width: 480px) { form { padding: 12px; } }
+  </style>
+</head>
+<body>
+  <h1>Form đăng ký</h1>
+  <p>Validate email, mật khẩu; lưu dữ liệu hợp lệ vào LocalStorage; responsive form.</p>
+
+  <form id="signup" novalidate>
+    <div class="row">
+      <label for="name">Tên</label>
+      <input id="name" name="name" type="text" placeholder="Nguyễn Văn A" required />
+      <small id="err-name" class="error" aria-live="polite"></small>
+    </div>
+
+    <div class="row">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" placeholder="a@example.com" required />
+      <small id="err-email" class="error" aria-live="polite"></small>
+    </div>
+
+    <div class="row">
+      <label for="password">Mật khẩu</label>
+      <input id="password" name="password" type="password" placeholder="Ít nhất 8 ký tự, có hoa/thường/số" required />
+      <small id="err-password" class="error" aria-live="polite"></small>
+    </div>
+
+    <div class="row">
+      <label>
+        <input id="terms" type="checkbox" /> Đồng ý điều khoản
+      </label>
+      <small id="err-terms" class="error" aria-live="polite"></small>
+    </div>
+
+    <div class="actions">
+      <button type="submit">Đăng ký</button>
+      <button type="reset">Xóa</button>
+    </div>
+
+    <p id="success" class="success" hidden>Đăng ký thành công! Dữ liệu đã được lưu cục bộ.</p>
+  </form>
+
+  <script>
+    const form = document.getElementById('signup');
+    const nameEl = document.getElementById('name');
+    const emailEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    const termsEl = document.getElementById('terms');
+
+    const errName = document.getElementById('err-name');
+    const errEmail = document.getElementById('err-email');
+    const errPass = document.getElementById('err-password');
+    const errTerms = document.getElementById('err-terms');
+    const ok = document.getElementById('success');
+
+    function validEmail(v) {
+      // Regex đơn giản, đủ cho demo (không bao quát mọi trường hợp)
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+    }
+    function validPassword(v) {
+      return v.length >= 8 && /[A-Z]/.test(v) && /[a-z]/.test(v) && /\d/.test(v);
+    }
+
+    function clearErrors() {
+      [errName, errEmail, errPass, errTerms].forEach(el => el.textContent = '');
+      ok.hidden = true;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const name = nameEl.value.trim();
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+
+      let firstErrorEl = null;
+
+      if (!name) { errName.textContent = 'Vui lòng nhập tên.'; firstErrorEl = firstErrorEl || nameEl; }
+      if (!validEmail(email)) { errEmail.textContent = 'Email không hợp lệ.'; firstErrorEl = firstErrorEl || emailEl; }
+      if (!validPassword(password)) {
+        errPass.textContent = 'Mật khẩu phải ≥8 ký tự, có hoa/thường/số.';
+        firstErrorEl = firstErrorEl || passEl;
+      }
+      if (!termsEl.checked) { errTerms.textContent = 'Bạn cần đồng ý điều khoản.'; firstErrorEl = firstErrorEl || termsEl; }
+
+      if (firstErrorEl) { firstErrorEl.focus(); return; }
+
+      // Lưu LocalStorage: demo lưu tối thiểu, tránh lưu mật khẩu thuần trong thực tế
+      const user = { name, email, createdAt: new Date().toISOString() };
+      try {
+        // Hash demo phía client (không an toàn như server), chỉ minh họa:
+        const enc = new TextEncoder();
+        const buf = await crypto.subtle.digest('SHA-256', enc.encode(password));
+        const hash = Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        user.passHash = hash;
+      } catch {
+        // Nếu không hỗ trợ SubtleCrypto, bỏ qua hash
+      }
+
+      localStorage.setItem('user_signup', JSON.stringify(user));
+      ok.hidden = false;
+      form.reset();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bài tập 03 — Countdown 10 phút</title>
+  <style>
+    :root { --primary: #0d6efd; --danger: #d7263d; }
+    body { font-family: system-ui, sans-serif; display: grid; min-height: 100vh; place-items: center; margin: 0; }
+    .timer { font-size: 64px; font-weight: 700; color: var(--primary); }
+    .warning { color: var(--danger); animation: pulse 1s infinite; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    .controls { margin-top: 16px; display: flex; gap: 12px; }
+    button { padding: 10px 16px; border-radius: 8px; border: none; background: #222; color: #fff; cursor: pointer; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; }
+    .modal { background: #fff; border-radius: 12px; padding: 18px; max-width: 360px; text-align: center; }
+    .modal-backdrop.show { display: flex; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="display" class="timer">10:00</div>
+    <div class="controls">
+      <button id="start">Bắt đầu</button>
+      <button id="pause">Tạm dừng</button>
+      <button id="reset">Reset</button>
+    </div>
+  </main>
+
+  <div id="backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <h2 id="modal-title">Hết thời gian</h2>
+      <p>Bạn có thể reset để bắt đầu lại.</p>
+      <button id="close">Đóng</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+    const startBtn = document.getElementById('start');
+    const pauseBtn = document.getElementById('pause');
+    const resetBtn = document.getElementById('reset');
+    const backdrop = document.getElementById('backdrop');
+    const closeBtn = document.getElementById('close');
+
+    const DURATION = 10 * 60 * 1000; // 10 phút (ms)
+    let endAt = null;     // timestamp kết thúc
+    let intervalId = null;
+
+    function format(ms) {
+      const totalSec = Math.max(0, Math.floor(ms / 1000));
+      const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const s = String(totalSec % 60).padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function tick() {
+      const now = Date.now();
+      const remain = (endAt ?? now) - now;
+      display.textContent = format(remain);
+      // Cảnh báo khi còn < 1 phút
+      display.classList.toggle('warning', remain <= 60_000 && remain > 0);
+
+      if (remain <= 0) {
+        clearInterval(intervalId);
+        intervalId = null;
+        display.textContent = '00:00';
+        backdrop.classList.add('show');
+      }
+    }
+
+    function start() {
+      if (intervalId) return; // tránh tạo thêm interval (memory leak)
+      const now = Date.now();
+      endAt = now + (endAt ? (endAt - now) : DURATION);
+      intervalId = setInterval(tick, 1000);
+      tick();
+    }
+
+    function pause() {
+      if (!intervalId) return;
+      clearInterval(intervalId);
+      intervalId = null;
+      // giữ endAt hiện tại (để resume đúng thời gian còn lại)
+      tick();
+    }
+
+    function reset() {
+      clearInterval(intervalId);
+      intervalId = null;
+      endAt = null;
+      display.classList.remove('warning');
+      display.textContent = format(DURATION);
+      backdrop.classList.remove('show');
+    }
+
+    // Modal close
+    closeBtn.addEventListener('click', () => backdrop.classList.remove('show'));
+
+    // Controls
+    startBtn.addEventListener('click', start);
+    pauseBtn.addEventListener('click', pause);
+    resetBtn.addEventListener('click', reset);
+
+    // Tránh sai lệch khi tab không hoạt động: dùng Date.now thay vì tăng đếm
+    // Đồng bộ server thời gian (nếu cần) trong môi trường động:
+    // - Với GitHub Pages (site tĩnh) không có server, ta dùng client time.
+    // - Nếu có server, fetch time và đặt endAt dựa trên server để đồng bộ.
+  </script>
+</body>
+</html>
